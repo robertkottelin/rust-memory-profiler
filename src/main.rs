@@ -4,9 +4,10 @@ use std::{
 };
 use tui::{
     backend::CrosstermBackend,
-    widgets::{Widget, Block, Borders, Row, Cell, Table},
+    widgets::{Widget, Block, Borders, Row, Cell, Table, BarChart, Dataset},
     layout::{Layout, Constraint, Direction},
     Terminal, text::Text,
+    style::{Color, Modifier, Style},
 };
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
