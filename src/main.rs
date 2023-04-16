@@ -7,7 +7,7 @@ use tui::{
     widgets::{Widget, Block, Borders, Row, Cell, Table, BarChart, Dataset},
     layout::{Layout, Constraint, Direction},
     Terminal, text::Text,
-    style::{Color, Modifier, Style},
+    style::{Color, Style},
 };
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
@@ -30,27 +30,54 @@ fn main() -> Result<(), io::Error> {
             let size = f.size();
             let memory_usage = get_memory_usage();
 
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(
+                    [
+                        Constraint::Percentage(50),
+                        Constraint::Percentage(50),
+                    ]
+                    .as_ref(),
+                )
+                .split(size);
+
+            // Table widget
             let table_rows: Vec<Row> = memory_usage
                 .iter()
                 .map(|(process_name, memory_mb)| {
                     let memory_str = format!("{:.2} MB", memory_mb);
                     Row::new(vec![
                         Cell::from(process_name.as_str()),
-                        Cell::from(memory_str)
+                        Cell::from(memory_str),
                     ])
                     .height(1)
                 })
                 .collect();
 
             let table = Table::new(table_rows)
-                .header(Row::new(vec![
-                    Cell::from("Name"),
-                    Cell::from("Memory")
-                ]).height(1))
+                .header(
+                    Row::new(vec![Cell::from("Name"), Cell::from("Memory")]).height(1),
+                )
                 .block(Block::default().title("Memory Usage").borders(Borders::ALL))
                 .widths(&[Constraint::Percentage(50), Constraint::Percentage(50)]);
 
-            f.render_widget(table, size);
+            f.render_widget(table, chunks[0]);
+
+            // Bar chart widget
+            let memory_usage_dataset: Vec<(&str, u64)> = memory_usage
+                .iter()
+                .map(|(process_name, memory_mb)| (process_name.as_str(), (*memory_mb * 1024.0) as u64))
+                .collect();
+            
+
+            let barchart = BarChart::default()
+                .block(Block::default().title("Memory Usage Chart").borders(Borders::ALL))
+                .data(&memory_usage_dataset)
+                .bar_width(5)
+                .bar_style(Style::default().fg(Color::Green))
+                .value_style(Style::default().fg(Color::White));
+
+            f.render_widget(barchart, chunks[1]);
         })?;
 
         thread::sleep(Duration::from_secs(1));
