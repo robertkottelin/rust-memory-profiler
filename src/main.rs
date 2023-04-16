@@ -1,24 +1,76 @@
-use std::thread;
-use std::time::Duration;
-use sysinfo::{ProcessExt, System, SystemExt, Pid};
-use std::collections::HashMap;
+use std::{
+    io, thread, time::Duration,
+    collections::HashMap,
+};
+use tui::{
+    backend::CrosstermBackend,
+    widgets::{Widget, Block, Borders, Row, Cell, Table},
+    layout::{Layout, Constraint, Direction},
+    Terminal, text::Text,
+};
+use crossterm::{
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use sysinfo::{ProcessExt, System, SystemExt};
 
-fn main() {
+fn main() -> Result<(), io::Error> {
+    // Setup terminal
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
     loop {
-        print_memory_usage();
+        // Draw TUI with memory usage
+        terminal.draw(|f| {
+            let size = f.size();
+            let memory_usage = get_memory_usage();
+
+            let table_rows: Vec<Row> = memory_usage
+                .iter()
+                .map(|(process_name, memory_mb)| {
+                    let memory_str = format!("{:.2} MB", memory_mb);
+                    Row::new(vec![
+                        Cell::from(process_name.as_str()),
+                        Cell::from(memory_str)
+                    ])
+                    .height(1)
+                })
+                .collect();
+
+            let table = Table::new(table_rows)
+                .header(Row::new(vec![
+                    Cell::from("Name"),
+                    Cell::from("Memory")
+                ]).height(1))
+                .block(Block::default().title("Memory Usage").borders(Borders::ALL))
+                .widths(&[Constraint::Percentage(50), Constraint::Percentage(50)]);
+
+            f.render_widget(table, size);
+        })?;
+
         thread::sleep(Duration::from_secs(1));
     }
+
+    // Restore terminal
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
+
+    Ok(())
 }
 
-fn print_memory_usage() {
-    // Clears the terminal
-    print!("{esc}[2J", esc = 27 as char);
-
+fn get_memory_usage() -> Vec<(String, f64)> {
     // Create a new system instance
     let mut system = System::new_all();
     system.refresh_all();
-
-    println!("Name\t\t\tMemory");
 
     // Create a new HashMap to store the process name and memory usage
     let mut process_memory_map = HashMap::new();
@@ -40,11 +92,9 @@ fn print_memory_usage() {
     }
 
     // Sort processes by memory usage
-    let mut sorted_processes: Vec<(&String, &f64)> = process_memory_map.iter().collect();
-    sorted_processes.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap());
+    let mut sorted_processes: Vec<(String, f64)> = process_memory_map.into_iter().collect();
+    sorted_processes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
-    // Print the top 10 processes
-    for (process_name, memory_mb) in sorted_processes.iter().take(10) {
-        println!("{:.15}\t\t{:.2} MB", process_name, memory_mb);
-    }
+    // Return the top 10 processes
+    sorted_processes.into_iter().take(10).collect()
 }
