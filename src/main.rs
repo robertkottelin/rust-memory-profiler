@@ -74,7 +74,7 @@ fn main() -> Result<(), io::Error> {
                 .block(Block::default().title("Memory Usage Chart").borders(Borders::ALL))
                 .data(&memory_usage_dataset)
                 .bar_width(5)
-                .bar_style(Style::default().fg(Color::Green))
+                .bar_style(Style::default().fg(Color::DarkGray))
                 .value_style(Style::default().fg(Color::White));
 
             f.render_widget(barchart, chunks[1]);
