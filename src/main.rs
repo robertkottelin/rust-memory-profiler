@@ -22,7 +22,7 @@ fn main() -> Result<(), io::Error> {
     let mut terminal = Terminal::new(backend)?;
 
     loop {
-        // Draw TUI with memory usage
+        // Draw TUI with memory usa
         terminal.draw(|f| {
             let size = f.size();
             let memory_usage = get_memory_usage();
@@ -75,6 +75,15 @@ fn main() -> Result<(), io::Error> {
         })?;
 
         thread::sleep(Duration::from_secs(1));
+        // terminate the loop if user presses 'q'
+        if crossterm::event::poll(Duration::from_millis(100))? {
+            if let crossterm::event::Event::Key(event) = crossterm::event::read()? {
+                if event.code == crossterm::event::KeyCode::Char('q') {
+                    println!("Exiting...");
+                    break Ok(());
+                }
+            }
+        }
     }
 }
 
@@ -109,4 +118,3 @@ fn get_memory_usage() -> Vec<(String, f64)> {
     // Return the top 10 processes
     sorted_processes.into_iter().take(10).collect()
 }
-
