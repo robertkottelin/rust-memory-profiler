@@ -1,20 +1,17 @@
-use std::{
-    io, thread, time::Duration,
-    collections::HashMap,
+use crossterm::{
+    event::EnableMouseCapture,
+    execute,
+    terminal::{enable_raw_mode, EnterAlternateScreen},
 };
+use std::{collections::HashMap, io, thread, time::Duration};
+use sysinfo::{ProcessExt, System, SystemExt};
 use tui::{
     backend::CrosstermBackend,
-    widgets::{Widget, Block, Borders, Row, Cell, Table, BarChart, Dataset},
-    layout::{Layout, Constraint, Direction},
-    Terminal, text::Text,
+    layout::{Constraint, Direction, Layout},
     style::{Color, Style},
+    widgets::{BarChart, Block, Borders, Cell, Row, Table},
+    Terminal,
 };
-use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
-use sysinfo::{ProcessExt, System, SystemExt};
 
 fn main() -> Result<(), io::Error> {
     // Setup terminal
@@ -32,13 +29,7 @@ fn main() -> Result<(), io::Error> {
 
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints(
-                    [
-                        Constraint::Percentage(50),
-                        Constraint::Percentage(50),
-                    ]
-                    .as_ref(),
-                )
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
                 .split(size);
 
             // Table widget
@@ -55,9 +46,7 @@ fn main() -> Result<(), io::Error> {
                 .collect();
 
             let table = Table::new(table_rows)
-                .header(
-                    Row::new(vec![Cell::from("Name"), Cell::from("Memory")]).height(1),
-                )
+                .header(Row::new(vec![Cell::from("Name"), Cell::from("Memory")]).height(1))
                 .block(Block::default().title("Memory Usage").borders(Borders::ALL))
                 .widths(&[Constraint::Percentage(50), Constraint::Percentage(50)]);
 
@@ -66,12 +55,17 @@ fn main() -> Result<(), io::Error> {
             // Bar chart widget
             let memory_usage_dataset: Vec<(&str, u64)> = memory_usage
                 .iter()
-                .map(|(process_name, memory_mb)| (process_name.as_str(), (*memory_mb * 1024.0) as u64))
+                .map(|(process_name, memory_mb)| {
+                    (process_name.as_str(), (*memory_mb * 1024.0) as u64)
+                })
                 .collect();
-            
 
             let barchart = BarChart::default()
-                .block(Block::default().title("Memory Usage Chart").borders(Borders::ALL))
+                .block(
+                    Block::default()
+                        .title("Memory Usage Chart")
+                        .borders(Borders::ALL),
+                )
                 .data(&memory_usage_dataset)
                 .bar_width(5)
                 .bar_style(Style::default().fg(Color::DarkGray))
@@ -82,17 +76,6 @@ fn main() -> Result<(), io::Error> {
 
         thread::sleep(Duration::from_secs(1));
     }
-
-    // Restore terminal
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
-
-    Ok(())
 }
 
 fn get_memory_usage() -> Vec<(String, f64)> {
@@ -126,3 +109,4 @@ fn get_memory_usage() -> Vec<(String, f64)> {
     // Return the top 10 processes
     sorted_processes.into_iter().take(10).collect()
 }
+
